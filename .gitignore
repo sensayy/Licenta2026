@@ -3,3 +3,5 @@ malware-classification.zip
 .venv/
 __pycache__/
 bytes_grayscale/
+train/
+parsed_bytes/
