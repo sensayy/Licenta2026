@@ -5,3 +5,4 @@ __pycache__/
 bytes_grayscale/
 train/
 parsed_bytes/
+prompts/
