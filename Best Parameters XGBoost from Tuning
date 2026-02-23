@@ -1,0 +1,3 @@
+Best Parameters found: {'subsample': 0.5, 'n_estimators': 1000, 'max_depth': 10, 'learning_rate': 0.05, 'colsample_bytree': 0.5}
+Best CV Score: 0.9862
+Final Test Accuracy: 0.9922
