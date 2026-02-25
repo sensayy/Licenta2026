@@ -9,3 +9,4 @@ prompts/
 images/
 malware_env/
 images_resized/
+test.py
