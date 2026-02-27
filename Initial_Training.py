@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-df = pd.read_csv("ByteCount_Size_Labels.csv")
-
+#df = pd.read_csv("ByteCount_Size_Labels.csv")
+df = pd.read_csv("Full_Features_v1.csv")
 
 X = df.drop(columns=['Id', 'Class']) #Pregatim datele X fara ID si Clasa
 y = df['Class'] #Label-urile
