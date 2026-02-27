@@ -1,6 +1,6 @@
 # Malware Classification Diploma Project
 
-This repository contains the source code and data for a **final‑year diploma project** in the field of malware analysis and machine learning. The goal is to explore different approaches for **classifying malware families** based on file‑level features extracted from a public dataset (`train.7z`) and to compare classical ML models with a simple convolutional neural network.
+This repository contains the source code and data for a **final‑year diploma project** in the field of malware analysis and machine learning. The goal is to explore different approaches for **classifying malware families** based on file‑level features extracted from a public dataset (`Microsoft BIG 2015 Malware Classification Dataset`) and to compare classical ML models with a simple convolutional neural network.
 
 ---
 
@@ -46,60 +46,10 @@ Several scripts produce charts used in analysis or the diploma report:
 - **Model diagnostics** (`Initial_Training.py`, `CNN_Report.py`): feature‑importance bars, accuracy plots, confusion matrices.
 - The generated figures are saved as PNGs in the repository root.
 
----
-
-## ⚙️ Getting Started
-
-1. **Clone the repository**  
-   ```bash
-   git clone <repo-url>
-   cd Licenta
-   ```
-
-2. **Create and activate a Python virtual environment**  
-   ```powershell
-   python -m venv .venv
-   .\.venv\Scripts\Activate.ps1   # Windows
-   ```
-
-3. **Install dependencies**  
-   (no `requirements.txt` is provided, but the following packages are required)
-   ```bash
-   pip install pandas numpy matplotlib seaborn scikit-learn xgboost torch torchvision pillow tqdm py7zr cupy
-   ```
-
-4. **Prepare the dataset**  
-   - Place `train.7z` in the project root.  
-   - Run `filesize.py` to generate `filesizes.csv`.  
-   - Extract `.bytes` files to `./train` and run `HexCount.py` → output in `parsed_bytes/`.  
-   - Convert parsed bytes to images with `hex_img.py` (creates `images/`).
-
-5. **Generate feature CSV**  
-   ```bash
-   python bytescsv.py
-   # produces ByteCount_Size_Labels.csv
-   ```
-
-6. **Explore the data & train models**  
-   ```bash
-   python data_graph.py          # dataset visualisation
-   python filesize_graph.py      # size analysis
-   python Initial_Training.py    # baseline ML models
-   python HyperParameterXG.py    # tune XGBoost
-   python Image_Training.py      # train CNN
-   python CNN_Report.py          # evaluate CNN
-   ```
-
-7. **Inspect / debug**  
-   Use `test.py` to verify that label IDs match image filenames or `organizer.py` to sort CSV columns.
-
-> 🔁 Many scripts save plots or CSVs; rerun them when you update the data.
-
----
 
 ## 🛠️ Maintainers & Contributions
 
-- **Maintainer:** _[Your Name]_  
+- **Maintainer:** Abel Mihai-Alexandru  
 - This repository was created for academic purposes; feel free to fork, experiment, and learn.
 - Contributions are welcome via pull requests. If you add major functionality (e.g. new model, data pipeline), please update this README accordingly.
 
@@ -112,7 +62,3 @@ For formal contribution guidelines, see `CONTRIBUTING.md` (if added) or the proj
 - This is **not** production‑grade code; it was written for experimentation and demonstration.
 - No license file is included—add one if you plan to share the code publicly.
 - Keep generated data (CSVs, images) under version control only if they are small; otherwise use `backup/` to store intermediate artifacts.
-
-> 💡 **Tip:** Work incrementally—run preprocessing scripts once, then focus on model training and analysis. The notebooks/figures produced can be reused in your diploma report.
-
-Good luck with your project!
