@@ -53,8 +53,11 @@ transform_val = transforms.Compose([
 
 
 full_dataset = torchvision.datasets.ImageFolder(root='images', transform=transform_train) #Incarcam imaginile si le transformam cu transform_train, care include resize, grayscale, augmentari si normalizare
+print("Images loaded successfully.")
 val_dataset  = torchvision.datasets.ImageFolder(root='images', transform=transform_val) #Pentru validare si testare nu aplicam augmentari, doar resize, grayscale si normalizare
+print("Validation images loaded successfully.")
 test_dataset = torchvision.datasets.ImageFolder(root='images', transform=transform_val)
+print("Test images loaded successfully.")
 
 #Facem splitul de train/val/test, 80% pentru train, 10% pentru val si 10% pentru test
 total = len(full_dataset)
@@ -62,12 +65,14 @@ n_train = int(0.8 * total)
 n_val = int(0.1 * total)
 n_test = total - n_train - n_val
 
+                                        #.tolist() converteste tensorul de indici intr-o lista, pentru a putea fi folositi in Subset.
 indices = torch.randperm(total, generator=torch.Generator().manual_seed(42)).tolist() #Returns a random permutation of integers from 0 to n - 1.
 train_indices = indices[:n_train] #Primii n_train indici pentru setul de antrenament, restul pentru validare si testare, asigurand un split aleatoriu dar reproducibil datorita seed-ului fixat la generator
 val_indices   = indices[n_train:n_train + n_val] #Urmatorii n_val indici pentru setul de validare, restul pentru testare
 test_indices  = indices[n_train + n_val:] #Ultimii n_test indici pentru setul de testare
+print(f"Dataset split: {n_train} train, {n_val} val, {n_test} test")
 
-#.tolist() converteste tensorul de indici intr-o lista, pentru a putea fi folositi in Subset.
+
 
 
 train_data = Subset(full_dataset, train_indices) #Subset este o clasa care permite crearea unui subset dintr-un dataset, 
@@ -76,7 +81,7 @@ train_data = Subset(full_dataset, train_indices) #Subset este o clasa care permi
                                                 # De asemenea, putem face acelasi lucru pentru validare si testare, folosind indicii corespunzatori.
 val_data   = Subset(val_dataset,  val_indices)
 test_data  = Subset(test_dataset, test_indices)
-
+print("Subsets created successfully.")
 
 # Weighted sampler for class imbalance
 targets      = [full_dataset.targets[i] for i in train_data.indices] #targets este o lista care contine etichetele (clasele) pentru fiecare imagine din setul de antrenament, extrase folosind indicii din train_data.indices. 
@@ -85,11 +90,15 @@ class_counts = np.bincount(targets) #np.bincount(numere) returneaza un array in 
 class_weights  = 1.0 / class_counts #Calculam ponderile pentru fiecare clasa ca fiind inversul numarului de aparitii al clasei respective in setul de antrenament.
 sample_weights = [class_weights[t] for t in targets] #sample_weights este o lista care contine ponderile pentru fiecare exemplu din setul de antrenament, extrase folosind etichetele din targets.
 sampler = WeightedRandomSampler(sample_weights, len(sample_weights)) #WeightedRandomSampler este o clasa care permite esantionarea aleatorie a datelor dintr-un dataset, folosind ponderi pentru fiecare exemplu.
+print("Weighted sampler created successfully.")
 
 train_loader = DataLoader(train_data, batch_size=batch_size, sampler=sampler) 
+print("Train DataLoader created successfully.")
                             #DataLoader este o clasa care permite incarcarea datelor in batch-uri, folosind un sampler pentru a controla modul in care sunt selectate exemplele din dataset.
 val_loader   = DataLoader(val_data,   batch_size=batch_size, shuffle=False) 
+print("Validation DataLoader created successfully.")
 test_loader  = DataLoader(test_data,  batch_size=batch_size, shuffle=False) 
+print("Test DataLoader created successfully.")
                             #Pentru validare si testare nu amestecam datele, deoarece vrem sa evaluam modelul pe un set fix de exemple, asigurand o evaluare consistenta.
 
 
@@ -119,7 +128,7 @@ class CNN(nn.Module):
                             # Acest lucru permite modelului sa invete sa clasifice imaginile in cele 9 clase din setul nostru de date, folosind reprezentarile invatate de EfficientNet-B4.
 
 model = CNN(num_classes=9).to(device)
-
+print("Model initialized and moved to device successfully.")
 criterion = nn.CrossEntropyLoss(label_smoothing=0.1) 
                 #CrossEntropyLoss este o functie de pierdere utilizata pentru problemele de clasificare multi-clasa, care combina log-softmax si negative log-likelihood loss intr-o singura functie.
                 #label_smoothing este o tehnica de regularizare care ajuta la prevenirea overfitting-ului, prin "netezirea" etichetelor (labels) din setul de date,
@@ -129,7 +138,7 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
                 #CosineAnnealingLR este o strategie de ajustare a ratei de invatare
                 # care reduce rata de invatare in mod cosinusoidal pe parcursul antrenamentului, ajutand la convergenta modelului si prevenind blocarea in minime locale.
-
+print("Criterion, optimizer and scheduler initialized successfully.")
 def evaluate(loader): #loader este un DataLoader care contine datele de validare sau testare, pe care dorim sa evaluam performanta modelului.
     model.eval() #Setam modelul in modul de evaluare pentru a dezactiva anumite comportamente specifice antrenamentului, cum ar fi dropout-ul si batch normalization, care pot afecta performanta modelului in timpul evaluarii.
     total_loss, correct, total = 0.0, 0, 0 
@@ -148,7 +157,6 @@ def evaluate(loader): #loader este un DataLoader care contine datele de validare
         return total_loss / total, 100*correct / total #Returnam pierderea medie pe batch si acuratetea procentuala a modelului pe setul de date evaluat.
     
 train_losses, val_losses, val_accuracies = [], [], []
-
 
 def plot_confusion_matrix(loader, title):
     model.eval()
@@ -170,7 +178,7 @@ def plot_confusion_matrix(loader, title):
     plt.ylabel('True')
     plt.xticks(rotation=45, ha='right')  # rotate labels so they don't overlap
     plt.tight_layout()
-    plt.savefig('confusion_matrix.png', dpi=150, bbox_inches='tight')
+    plt.savefig('confusion_matrix_v2.png', dpi=150, bbox_inches='tight')
     plt.show()
     print(classification_report(all_labels, all_preds, target_names=full_dataset.classes))
 
@@ -202,6 +210,7 @@ warmup_losses = []
 for epoch in range(5): 
     model.train() 
     running_loss = 0.0
+    print(f"[Warmup {epoch+1}/5] Starting epoch...")
     for images, labels in train_loader:
         images, labels = images.to(device), labels.to(device)
         optimizer_warmup.zero_grad() #Resetam gradientii la zero inainte de a face backpropagation, 
@@ -218,6 +227,7 @@ for epoch in range(5):
 # Stage 2: unfreeze and fine-tune all layers
 for param in model.parameters():#Iteram prin toti parametrii modelului, inclusiv straturile de caracteristici (features) si stratul de clasificare (head), si setam requires_grad la True pentru fiecare parametru.
     param.requires_grad = True
+print("All layers unfrozen for fine-tuning.")
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=1e-4)
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
@@ -227,7 +237,7 @@ best_val_acc = 0.0
 for epoch in range(num_epochs): #Incepem antrenarea propriu-zisa pentru num_epochs (10 epoci))
     model.train() #Setam modelul in modul antrenament
     running_loss = 0.0 #Tinem cont de pierderea cumulativa pe epoca pentru a putea calcula pierderea medie pe batch la finalul epocii.
-
+    print(f"[Fine-tune {epoch+1}/{num_epochs}] Starting epoch...")
     for images, labels in train_loader:
         images, labels = images.to(device), labels.to(device)
         optimizer.zero_grad() #Resetam gradientii la zero
@@ -237,12 +247,13 @@ for epoch in range(num_epochs): #Incepem antrenarea propriu-zisa pentru num_epoc
         running_loss += loss.item() #Adaugam pierderea curenta la running_loss pentru a putea calcula pierderea medie pe batch la finalul epocii.
 
     scheduler.step() #Actualizam rata de invatare conform strategiei de ajustare a ratei de invatare (CosineAnnealingLR) dupa fiecare epoca.
-
+    print("Scheduler step completed.")
     avg_train = running_loss / len(train_loader)
     val_loss, val_acc = evaluate(val_loader)
     if val_acc > best_val_acc:
         best_val_acc = val_acc
         torch.save(model.state_dict(), "malware_cnn_best_v2.pth")
+        print(f"New best model saved with Val Acc: {best_val_acc:.2f}%")
 
     train_losses.append(avg_train)
     val_losses.append(val_loss)
@@ -272,6 +283,7 @@ plt.title('Training Loss with Warmup V2')
 plt.xlabel('Epoch')
 plt.ylabel('Loss')
 plt.legend()
+plt.savefig('training_loss_with_warmup_v2.png', dpi=150, bbox_inches='tight')  # Save the plot with high resolution and tight layout
 plt.show()
 
 #Plotam curbele de pierdere (loss) pentru antrenament si validare, precum si acuratetea pe setul de validare, pentru a vizualiza performanta modelului pe parcursul antrenamentului.
@@ -290,4 +302,5 @@ plt.xlabel('Epoch')
 plt.ylabel('Accuracy (%)')
 plt.legend()
 plt.tight_layout()
+plt.savefig('training_curves_v2.png', dpi=150, bbox_inches='tight')  # Save the plot with high resolution and tight layout
 plt.show()
