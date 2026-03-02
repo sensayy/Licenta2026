@@ -22,7 +22,7 @@ vocabulary2 = {
     'jnz', 'retn', 'xor', 'sbb', 'nop', 'imul', 'int',
     'sub', 'and', 'or', 'inc', 'dec', 'movzx', 'movsx', 'sar', 'shr', 'shl',
     'mul', 'div', 'neg', 'not', 'je', 'jne', 'jl', 'jle', 'jg', 'jge',
-    'jb', 'jbe', 'ja', 'jae', 'ret', 'leave', 'enter'
+    'jb', 'jbe', 'ja', 'jae', 'ret', 'leave', 'enter',
 }
 
 #Roundy, K. A., & Miller, B. P. (2013). Binary-code obfuscations in prevalent packer tools. ACM Computing Surveys. — supports the packer/unpacking loop opcodes (pushad, popad, rep, stos etc.)
@@ -48,7 +48,27 @@ vocabulary4 = {
     'nop', 'imul'                           # packing indicators
 }
 
-vocabularies = [vocabulary1, vocabulary2, vocabulary3, vocabulary4]
+vocabulary5 = {
+    'mov', 'push', 'call', 'pop', 'cmp', 'jz', 'lea', 'test', 'jmp', 'add',
+    'jnz', 'retn', 'xor', 'sbb', 'nop', 'imul', 'int',
+    'sub', 'and', 'or', 'inc', 'dec', 'movzx', 'movsx', 'sar', 'shr', 'shl',
+    'mul', 'div', 'neg', 'not', 'je', 'jne', 'jl', 'jle', 'jg', 'jge',
+    'jb', 'jbe', 'ja', 'jae', 'ret', 'leave', 'enter',      
+    # Standard PE Sections
+    '.text', '.data', '.rdata', '.bss', '.idata', '.edata', '.rsrc', '.reloc',
+    
+    # Common Packer/Protector Sections (Huge indicators for specific families)
+    '.aspack', '.adata',        # Aspack packer
+    '.aspack', '.upx0', '.upx1', # UPX packer (Very common in malware)
+    '.nsp0', '.nsp1', '.nsp2',  # NsPack
+    '.pdata',                   # Often contains exception handling or packed data
+    '.code', '.tls',            # Thread Local Storage (Used for anti-debug tricks)
+    
+    # Symbols & Markers
+    'HEADER', 'Debug', 'Offset'
+}
+
+vocabularies = [vocabulary5]
 asm_files = "./train" 
 
 
@@ -86,7 +106,7 @@ if __name__ == "__main__":
                                                             # unde fiecare sublista corespunde unui vocabular si contine un dictionar pentru fiecare fisier asm cu numarul de aparitii al fiecarui 
                                                             # opcode din vocabularul respectiv
 
-    labels_df = pd.read_csv("ByteCount_Size_Labels.csv")
+    labels_df = pd.read_csv("csv/ByteCount_Size_Labels.csv")
 
     for i, vocab_results in enumerate(results_per_vocab, 1):
         features_df = pd.DataFrame(vocab_results)
