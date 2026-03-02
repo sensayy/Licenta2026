@@ -44,9 +44,9 @@ def save_results(dataset, model_name, accuracy, classification_report, log_loss_
 #=================================================================================================================================#
 #================= Load Data ===================
 
-df = pd.read_csv("csv/Full_Features_FINAL.csv")
-dataset = "Full_Features_FINAL.csv"
-print("Using dataset: Full_Features_FINAL.csv")
+df = pd.read_csv("csv/Full_Features_vocab2.csv")
+dataset = "Full_Features_vocab2.csv"
+print("Using dataset: Full_Features_vocab2.csv")
 
 os.makedirs(f"final_results/{dataset}", exist_ok=True)
 
