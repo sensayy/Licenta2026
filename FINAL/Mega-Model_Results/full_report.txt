@@ -1,0 +1,59 @@
+MEGA-MODEL — COMPREHENSIVE EVALUATION REPORT
+============================================================
+Samples Evaluated    : 1088
+Accuracy             : 99.63%
+Balanced Accuracy    : 99.61%
+Top-2 Accuracy       : 99.72%
+Log Loss             : 0.0404
+Matthews Corr Coef   : 0.9956
+Unknowns             : 13 (1.2%)
+
+Per-Class AUC-ROC:
+  Ramnit         : 0.9997
+  Lollipop       : 1.0000
+  Kelihos_v3     : 1.0000
+  Vundo          : 1.0000
+  Simda          : 1.0000
+  Tracur         : 1.0000
+  Kelihos_v1     : 1.0000
+  Obfuscator     : 0.9987
+  Gatak          : 1.0000
+
+Classification Report:
+              precision    recall  f1-score   support
+
+      Ramnit       0.98      1.00      0.99       163
+    Lollipop       1.00      1.00      1.00       253
+  Kelihos_v3       1.00      1.00      1.00       293
+       Vundo       1.00      1.00      1.00        45
+       Simda       1.00      1.00      1.00         6
+      Tracur       1.00      1.00      1.00        75
+  Kelihos_v1       1.00      1.00      1.00        42
+  Obfuscator       1.00      0.96      0.98       113
+       Gatak       1.00      1.00      1.00        98
+
+    accuracy                           1.00      1088
+   macro avg       1.00      1.00      1.00      1088
+weighted avg       1.00      1.00      1.00      1088
+
+Top-20 Feature Importances:
+  A4                                      : 0.047686
+  AB                                      : 0.039872
+  AA                                      : 0.026364
+  B1                                      : 0.025978
+  C7                                      : 0.023468
+  03                                      : 0.021213
+  A7                                      : 0.016484
+  ??                                      : 0.015194
+  71                                      : 0.015146
+  BE                                      : 0.014822
+  EB                                      : 0.014716
+  ED                                      : 0.014551
+  02                                      : 0.014297
+  32                                      : 0.014026
+  06                                      : 0.013567
+  99                                      : 0.011838
+  mul                                     : 0.011678
+  A9                                      : 0.011605
+  B7                                      : 0.011565
+  91                                      : 0.011218
