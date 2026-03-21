@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import seaborn as sb
 
 
-data = pd.read_csv("Labels_Sizes.csv")
+data = pd.read_csv("csv/Labels_Sizes.csv")
 families = {
     1: "Ramnit",
     2: "Lollipop",
@@ -44,7 +44,7 @@ plt.savefig("ASM Filesizes")
 
 plt.figure(figsize=(12, 7))
 
-plt.vlines(x=average['Family'], ymin=average['bytes_min'], ymax=average['asm_max'], color='gray')
+plt.vlines(x=average['Family'], ymin=average['bytes_min'], ymax=average['bytes_max'], color='gray')
 plt.scatter(average['Family'], average['bytes_min'], color='blue', label='Min Size',zorder=3)
 plt.scatter(average['Family'], average['bytes_max'], color='red', label='Max Size',zorder=3)
 plt.scatter(average['Family'], average['bytes_mean'], color='black', marker='X', label='Mean',zorder=4)

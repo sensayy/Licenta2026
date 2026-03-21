@@ -1,162 +1,125 @@
-import os
-import numpy as np
-import pandas as pd
-from PIL import Image
+"""
+CNN .pth -> ONNX Exporter (hardcoded paths)
+Just run: python cnn_to_onnx.py
+"""
+
 import torch
 import torch.nn as nn
 import torchvision.models as models
-from torchvision import transforms
-from tqdm import tqdm
-from sklearn.metrics import accuracy_score, classification_report
-import pickle
+import os
 
-# ── Config ────────────────────────────────────────────────────────────────────
-CSV_PATH      = 'csv/Full_Features_vocab2_sorted.csv'  # SORTED CSV - matches ImageFolder order
-BYTES_IMG_DIR = 'images'
-ASM_IMG_DIR   = 'asm_images'
-ID_COL        = 'Id'
-LABEL_COL     = 'Class'
-IMG_EXT       = '.png'
+# ──────────────────────────────────────────────
+# CONFIGURE THESE PATHS
+# ──────────────────────────────────────────────
+PTH_PATH    = r"B:\Licenta\Mega-Model\malware_cnn_best_v2.pth"
+OUTPUT_PATH = r"B:\Licenta\3d.onnx"
+INPUT_SIZE  = [3, 224, 224]   # [channels, height, width] - change if needed
+NUM_CLASSES = 1000             # change to your number of output classes
+# ──────────────────────────────────────────────
 
-CONFIDENCE_THRESHOLD = 0.55 #In cazul in care nu recunoaste de niciun fel (sub threshold), returnam "Unknown" pentru a evita false positives.
-                            #Safeguard impotriva unor predictii nesigure sau impotriva unor sample-uri complet noi.
-W_XGB, W_BYTE_CNN, W_ASM_CNN = 0.30, 0.40, 0.30
-CLASS_NAMES = ['Ramnit', 'Lollipop', 'Kelihos_v3', 'Vundo', 'Simda', 'Tracur', 'Kelihos_v1', 'Obfuscator', 'Gatak']
 
-# ── Model Architectures ───────────────────────────────────────────────────────
-class CNN(nn.Module):
-    def __init__(self, num_classes=9, dropout=0.4):
-        super().__init__()
-        self.base = models.efficientnet_b4(weights=None)
-        in_features = self.base.classifier[1].in_features
-        self.base.classifier = nn.Sequential(nn.Dropout(dropout), nn.Linear(in_features, num_classes))
-    def forward(self, x): return self.base(x)
+def build_model(state_dict):
+    """
+    Detects the EfficientNet variant from the state dict and builds the model.
+    Your keys start with 'base.features', so we wrap EfficientNet in a shell class.
+    """
 
-class CNN_ASM(nn.Module):
-    def __init__(self, num_classes=9, dropout=0.4):
-        super().__init__()
-        self.base = models.efficientnet_b3(weights=None)
-        in_features = self.base.classifier[1].in_features
-        self.base.classifier = nn.Sequential(nn.Dropout(dropout), nn.Linear(in_features, num_classes))
-    def forward(self, x): return self.base(x)
+    # Detect EfficientNet variant by first conv output channels
+    first_key = "base.features.0.0.weight"
+    first_channels = state_dict[first_key].shape[0]  # e.g. 48
 
-# ── Device & Model Loading ────────────────────────────────────────────────────
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(f"Using device: {device}")
+    variant_map = {
+        48: "efficientnet_b4",   # b4 starts with 48 filters
+        40: "efficientnet_b3",
+        32: "efficientnet_b0",
+        24: "efficientnet_b1",
+    }
+    variant = variant_map.get(first_channels, "efficientnet_b4")
+    print(f"[INFO] Detected variant: {variant} (first conv channels: {first_channels})")
 
-with open('Mega-Model/xgb_malware_model.pkl', 'rb') as f:
-    xgb_model = pickle.load(f)
+    # Build a wrapper that matches your 'base' prefix
+    class WrappedEfficientNet(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.base = getattr(models, variant)(weights=None)
+            # Replace classifier head to match your num classes
+            in_features = self.base.classifier[1].in_features
+            self.base.classifier[1] = nn.Linear(in_features, NUM_CLASSES)
 
-byte_cnn = CNN(num_classes=9).to(device)
-byte_cnn.load_state_dict(torch.load('Mega-Model/malware_cnn_best_v2.pth', map_location=device, weights_only=True))
-byte_cnn.eval()
+        def forward(self, x):
+            return self.base(x)
 
-asm_cnn = CNN_ASM(num_classes=9).to(device)
-asm_cnn.load_state_dict(torch.load('Mega-Model/malware_cnn_best_v1_asm.pth', map_location=device, weights_only=True))
-asm_cnn.eval()
+    model = WrappedEfficientNet()
+    return model
 
-# ── Split identic cu CNN-urile si XGBoost ─────────────────────────────────────
-# Folosim torch.randperm cu seed 42 si ratiile 80/10/10, exact ca in
-# scripturile de antrenament. CSV-ul trebuie sa fie sortat (sort_csv.py)
-# pentru ca indicii sa corespunda acelorasi sample-uri ca in ImageFolder.
-df = pd.read_csv(CSV_PATH).dropna()
 
-total   = len(df)
-n_train = int(0.8 * total)
-n_val   = int(0.1 * total)
+def main():
+    print(f"\n{'='*55}")
+    print(f"  Loading: {PTH_PATH}")
+    print(f"{'='*55}\n")
 
-indices      = torch.randperm(total, generator=torch.Generator().manual_seed(42)).tolist()
-test_indices = indices[n_train + n_val:]
+    if not os.path.exists(PTH_PATH):
+        print(f"[ERROR] File not found: {PTH_PATH}")
+        return
 
-df_hidden    = df.iloc[test_indices].reset_index(drop=True)
-feature_cols = [c for c in df.columns if c not in [ID_COL, LABEL_COL]]
+    # Load state dict
+    state_dict = torch.load(PTH_PATH, map_location="cpu", weights_only=True)
+    print(f"[INFO] State dict loaded — {len(state_dict)} keys")
 
-print(f"Total dataset:   {total}")
-print(f"Test set size:   {len(df_hidden)} samples (10%)")
-
-# ── Helpers & Transforms ──────────────────────────────────────────────────────
-def find_image_path(root_dir, file_id):
-    for root, dirs, files in os.walk(root_dir):
-        if f"{file_id}{IMG_EXT}" in files:
-            return os.path.join(root, f"{file_id}{IMG_EXT}")
-    return None
-
-transform_b4 = transforms.Compose([
-    transforms.Resize((380, 380)), 
-    transforms.Grayscale(3), 
-    transforms.ToTensor(),
-    transforms.Normalize([0.485, 0.456, 0.406], 
-                         [0.229, 0.224, 0.225])
-])
-transform_b3 = transforms.Compose([
-    transforms.Resize((300, 300)), 
-    transforms.Grayscale(3), 
-    transforms.ToTensor(),
-    transforms.Normalize([0.485, 0.456, 0.406], 
-                         [0.229, 0.224, 0.225])
-])
-
-# ── Inference Loop ────────────────────────────────────────────────────────────
-results = []
-
-for _, row in tqdm(df_hidden.iterrows(), total=len(df_hidden)):
-    file_id = row[ID_COL]
-    label   = int(row[LABEL_COL]) - 1
-
-    bytes_path = find_image_path(BYTES_IMG_DIR, file_id)
-    asm_path   = find_image_path(ASM_IMG_DIR, file_id)
+    # Build model and load weights
+    model = build_model(state_dict)
 
     try:
-        # 1. XGBoost
-        p_xgb = xgb_model.predict_proba(row[feature_cols].values.reshape(1, -1).astype(np.float32))
+        model.load_state_dict(state_dict, strict=True)
+        print("[INFO] Weights loaded successfully (strict=True)")
+    except RuntimeError as e:
+        print(f"[WARNING] Strict load failed: {e}")
+        print("[INFO] Retrying with strict=False (some layers may be missing/extra)...")
+        model.load_state_dict(state_dict, strict=False)
+        print("[INFO] Weights loaded with strict=False")
 
-        # 2. Bytes CNN
-        p_bytes = None
-        if bytes_path:
-            with torch.no_grad():
-                tensor  = transform_b4(Image.open(bytes_path).convert('RGB')).unsqueeze(0).to(device)
-                p_bytes = torch.softmax(byte_cnn(tensor), dim=1).cpu().numpy()
+    model.eval()
 
-        # 3. ASM CNN
-        p_asm = None
-        if asm_path:
-            with torch.no_grad():
-                tensor = transform_b3(Image.open(asm_path).convert('RGB')).unsqueeze(0).to(device)
-                p_asm  = torch.softmax(asm_cnn(tensor), dim=1).cpu().numpy()
+    # Print parameter count
+    total = sum(p.numel() for p in model.parameters())
+    print(f"[INFO] Total parameters: {total:,}")
 
-        # 4. Weighted fusion (gracefully handles missing images)
-        cw_b    = W_BYTE_CNN if p_bytes is not None else 0
-        cw_a    = W_ASM_CNN  if p_asm   is not None else 0
-        total_w = W_XGB + cw_b + cw_a
+    # Export to ONNX
+    print(f"\n{'='*55}")
+    print(f"  Exporting to ONNX -> {OUTPUT_PATH}")
+    print(f"{'='*55}")
 
-        p_final = (W_XGB / total_w * p_xgb)
-        if p_bytes is not None: p_final += (cw_b / total_w * p_bytes)
-        if p_asm   is not None: p_final += (cw_a / total_w * p_asm)
+    dummy_input = torch.randn(1, *INPUT_SIZE)
 
-        max_conf  = float(np.max(p_final))
-        pred_idx  = int(np.argmax(p_final, axis=1)[0])
-        final_label = CLASS_NAMES[pred_idx] if max_conf >= CONFIDENCE_THRESHOLD else "Unknown"
+    torch.onnx.export(
+        model,
+        dummy_input,
+        OUTPUT_PATH,
+        export_params=True,
+        opset_version=17,
+        do_constant_folding=True,
+        input_names=["input"],
+        output_names=["output"],
+        dynamic_axes={
+            "input":  {0: "batch_size"},
+            "output": {0: "batch_size"},
+        },
+    )
 
-        results.append({'True': label, 'Pred': pred_idx, 'Final': final_label, 'Conf': max_conf})
+    size_mb = os.path.getsize(OUTPUT_PATH) / 1024 / 1024
+    print(f"\n  ✅ Saved: {OUTPUT_PATH}  ({size_mb:.2f} MB)")
+    print(f"  👉 Open it at https://netron.app to view your model!\n")
 
+    # Validate
+    try:
+        import onnx
+        onnx.checker.check_model(onnx.load(OUTPUT_PATH))
+        print("  ✅ ONNX validation passed.\n")
+    except ImportError:
+        print("  [TIP] pip install onnx  to enable validation\n")
     except Exception as e:
-        print(f"Error on {file_id}: {e}")
-        continue
+        print(f"  [WARNING] Validation issue: {e}\n")
 
-# ── Final Reporting ───────────────────────────────────────────────────────────
-res_df     = pd.DataFrame(results)
-valid_mask = res_df['Final'] != "Unknown"
-acc        = accuracy_score(res_df['True'], res_df['Pred'])
 
-print(f"\nFINAL RESULTS (leak-proof test set):")
-print(f"Samples evaluated: {len(res_df)}")
-print(f"Accuracy:          {acc*100:.2f}%")
-print(f"Unknowns (below confidence threshold {CONFIDENCE_THRESHOLD}): {(~valid_mask).sum()}") #~ - boolean inversion, deci numaram cate predictii au fost unkown pentru ca valid_mask este False pentru acele predictii.
-print("-" * 50)
-print(classification_report(
-    res_df['True'],
-    res_df['Pred'],
-    target_names=CLASS_NAMES,
-    labels=range(len(CLASS_NAMES)),
-    zero_division=0
-))
+if __name__ == "__main__":
+    main()
