@@ -13,3 +13,5 @@ prompts/
 README/
 asm_images/
 malware_env/
+3d.py
+3d.onnx
