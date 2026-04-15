@@ -30,8 +30,8 @@ LABEL_COL     = 'Class'
 IMG_EXT       = '.png'
 OUTPUT_DIR    = 'Mega-Model_Results'
 
-CONFIDENCE_THRESHOLD = 0.55
-W_XGB, W_BYTE_CNN, W_ASM_CNN = 0.30, 0.40, 0.30
+CONFIDENCE_THRESHOLD = 0
+W_XGB, W_BYTE_CNN, W_ASM_CNN = 0.40, 0.30, 0.30
 CLASS_NAMES = ['Ramnit', 'Lollipop', 'Kelihos_v3', 'Vundo', 'Simda',
                'Tracur', 'Kelihos_v1', 'Obfuscator', 'Gatak']
 
@@ -138,7 +138,6 @@ class GradCAM:
         # Normalize to [0, 1]
         cam = (cam - cam.min()) / (cam.max() - cam.min() + 1e-8)
         return cam
-
 
 def get_gradcam_heatmap(model, transform, img_path, target_layer, device):
     """Returns (original_img_array, heatmap_array) for a given image."""
@@ -358,67 +357,7 @@ plt.savefig(f'{OUTPUT_DIR}/4_top20_features.png', dpi=150, bbox_inches='tight')
 plt.close()
 print(f"Saved: {OUTPUT_DIR}/4_top20_features.png")
 
-# ── 6. Feature Importance Heatmap (top 20 × 9 classes) ───────────────────────
-# XGBoost can give per-class importance if booster is accessible
-print("\nComputing SHAP values (this may take a few minutes)...")
-
-X_test  = df_hidden[feature_cols].astype(np.float32)
-
-# Use a background sample of 200 rows from the train split for efficiency
-train_indices_list = indices[:n_train]
-X_train_bg = df.iloc[train_indices_list][feature_cols].astype(np.float32).sample(
-    n=min(200, n_train), random_state=42
-)
-
-explainer   = shap.TreeExplainer(xgb_model, data=X_train_bg, feature_perturbation='interventional')
-shap_values = explainer.shap_values(X_test)
-# shap_values shape: (n_classes, n_samples, n_features)  or (n_samples, n_features, n_classes)
-# normalise to (n_classes, n_samples, n_features)
-if isinstance(shap_values, list):
-    # list of arrays, one per class: each (n_samples, n_features)
-    shap_array = np.stack(shap_values, axis=0)          # (n_classes, n_samples, n_features)
-else:
-    # single array (n_samples, n_features, n_classes)
-    shap_array = np.transpose(shap_values, (2, 0, 1))   # (n_classes, n_samples, n_features)
-
-# Mean absolute SHAP per class per feature → (n_classes, n_features)
-mean_abs_shap = np.abs(shap_array).mean(axis=1)         # (n_classes, n_features)
-
-# Pick the top 20 features by their max SHAP value across any class
-top20_global  = np.argsort(mean_abs_shap.max(axis=0))[-20:]
-feature_names = np.array(feature_cols)
-
-# Build heatmap matrix: rows = top-20 features, cols = classes
-heatmap_data = pd.DataFrame(
-    mean_abs_shap[:, top20_global].T,           # (20, n_classes)
-    index=feature_names[top20_global],
-    columns=CLASS_NAMES
-)
-# Sort rows by total importance for cleaner presentation
-heatmap_data = heatmap_data.loc[heatmap_data.sum(axis=1).sort_values().index]
-
-fig, ax = plt.subplots(figsize=(13, 9))
-sns.heatmap(
-    heatmap_data,
-    annot=True, fmt='.3f',
-    cmap='RdYlGn_r',          # green = low impact, red = high impact
-    linewidths=0.4,
-    ax=ax,
-    cbar_kws={'label': 'Mean |SHAP value| (impact on model output)'}
-)
-ax.set_title('SHAP Feature Importance — Mean |SHAP| per Feature per Class\n'
-             '(How much each feature influences confidence in each malware family)',
-             fontsize=12, pad=15)
-ax.set_xlabel('Malware Class', fontsize=11)
-ax.set_ylabel('Feature', fontsize=11)
-ax.tick_params(axis='x', rotation=30)
-ax.tick_params(axis='y', rotation=0)
-plt.tight_layout()
-plt.savefig(f'{OUTPUT_DIR}/shap_feature_heatmap.png', dpi=150, bbox_inches='tight')
-plt.close()
-print(f"Saved: {OUTPUT_DIR}/shap_feature_heatmap.png")
-
-# ── 7. Grad-CAM Heatmaps ──────────────────────────────────────────────────────
+# ── 6. Grad-CAM Heatmaps ──────────────────────────────────────────────────────
 # Show one example per class (bytes + ASM side by side) where available
 print("\nGenerating Grad-CAM heatmaps (this may take a minute)...")
 

@@ -63,11 +63,15 @@ asm_cnn.eval()
 
 # ── TRANSFORMS ────────────────────────────────────────────────────────────────
 transform_b4 = transforms.Compose([
-    transforms.Resize((380, 380)), transforms.Grayscale(3), transforms.ToTensor(),
+    transforms.Resize((380, 380)), 
+    transforms.Grayscale(3), 
+    transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ])
 transform_b3 = transforms.Compose([
-    transforms.Resize((300, 300)), transforms.Grayscale(3), transforms.ToTensor(),
+    transforms.Resize((300, 300)), 
+    transforms.Grayscale(3), 
+    transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ])
 

@@ -68,7 +68,25 @@ vocabulary5 = {
     'HEADER', 'Debug', 'Offset'
 }
 
-vocabularies = [vocabulary5]
+
+#https://www.researchgate.net/publication/249450684_A_scalable_multi-level_feature_extraction_technique_to_detect_maliciousexecutables
+vocabulary6 = {
+    # Data Movement
+    'mov', 'push', 'pop', 'lea', 'xchg',
+    
+    # Arithmetic
+    'add', 'sub', 'inc', 'dec', 'mul', 'div', 'imul', 'idiv',
+    
+    # Logic
+    'and', 'or', 'xor', 'not', 'shl', 'shr',
+    
+    # Flow Control
+    'jmp', 'call', 'ret', 'jz', 'jnz', 'je', 'jne', 'jb', 'jbe', 'ja', 'jae',
+    
+    # Other
+    'test', 'cmp', 'nop'
+}
+vocabularies = [vocabulary6]
 asm_files = "./train" 
 
 
@@ -111,6 +129,6 @@ if __name__ == "__main__":
     for i, vocab_results in enumerate(results_per_vocab, 1):
         features_df = pd.DataFrame(vocab_results)
         final_df = pd.merge(labels_df, features_df, on="Id")
-        out_name = f"Full_Features_vocab{i}.csv"
+        out_name = f"csv/Full_Features_vocab6.csv"
         final_df.to_csv(out_name, index=False)
         print(f"Vocab {i}: {final_df.shape[0]} rows, {final_df.shape[1]} columns -> {out_name}")
