@@ -7,9 +7,13 @@ from tqdm import tqdm
 
 
 hex = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"]
-vocabulary = [f"{i}{j}".upper() for i in hex for j in hex]
-vocabulary.append("??")
+
+unigram = [f"{i}{j}".upper() for i in hex for j in hex]
+unigram.append("??")
 ##### Se creeaza un "vocabular" cu toate posibilitatile de combinatii pentru hex
+
+
+vocabulary = [f"{a}_{b}" for a in unigram for b in unigram]
 
 parsed_bytes = "./parsed_bytes" 
 
@@ -33,9 +37,9 @@ def count_bytes(filename):
 
 if __name__ == "__main__":
     bytes_files = [f for f in os.listdir(parsed_bytes) if f.endswith(".bytes")] #accesam fisierele parsate
-
+    chunksize = max(1, len(bytes_files) // (os.cpu_count() * 4))
     with Pool() as pool:
-        results = list(tqdm(pool.imap_unordered(count_bytes, bytes_files), total = len(bytes_files), desc = "Counting...", unit = "file", colour = "green", leave = True))
+        results = list(tqdm(pool.imap_unordered(count_bytes, bytes_files, chunksize=chunksize), total = len(bytes_files), desc = "Counting...", unit = "file", colour = "green", leave = True))
 
     results = [r for r in results if r is not None]
 
@@ -43,7 +47,7 @@ if __name__ == "__main__":
     labels_df = pd.read_csv("Labels_Sizes.csv")
 
     final_df = pd.merge(labels_df, features_df, on="Id")
-    final_df.to_csv("ByteCount_Size_Labels.csv", index = False)
+    final_df.to_parquet("bigram_bytes.parquet", index = False)
     print(f"Done! Final file contains {final_df.shape[0]} rows and {final_df.shape[1]} columns.")
 
 
